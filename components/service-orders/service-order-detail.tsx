@@ -57,8 +57,8 @@ export function ServiceOrderDetail({ id }: ServiceOrderDetailProps) {
 
     try {
       const doc = generateServiceOrderPDF(serviceOrder)
-      doc.autoPrint()
-      window.open(doc.output("bloburl"), "_blank")
+      const fileName = `${serviceOrder.number.replace(/\//g, "-")}.pdf`
+      doc.save(fileName)
  
     } catch (error) {
       console.error("Error generating PDF:", error)

@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -112,6 +114,26 @@ export function ServiceOrderForm({ id, serviceOrder, onSubmit }: ServiceOrderFor
         } else {
           const nextNumber = await getNextServiceOrderNumber()
           form.setValue("number", nextNumber)
+          const defaultComment = `ORDEN DE SERVICIO N°${nextNumber} - MONITOREO AMBIENTALPE
+        
+ENTREGA DE DOCUMENTOS:
+- Orden de Servicio (Copia de la orden firmada)
+- Informe técnico de los trabajos realizados
+- Certificados de calibración de equipos utilizados
+- Consulta de Validez del Comprobante de Pago
+
+FACTURACIÓN: AMBIENTALPE S.A.C. / R.U.C. 20603040121 / DIRECCIÓN: Av. Benavides 1944, Oficina 1501, Miraflores, Lima
+
+RECEPCIÓN DE FACTURAS: Lunes a Viernes de 9:00 a.m. a 5:00 p.m.
+
+LUGAR DE PRESTACIÓN DEL SERVICIO: Según lo coordinado con el cliente
+
+INFORMACIÓN ADICIONAL:
+- Los informes deberán ser entregados en formato digital e impreso
+- Los resultados de monitoreo deben incluir comparación con los Estándares de Calidad Ambiental vigentes
+- Todos los equipos utilizados deben contar con certificados de calibración vigentes`
+
+          form.setValue("comments", defaultComment)
         }
 
         // Fetch services
@@ -196,7 +218,11 @@ export function ServiceOrderForm({ id, serviceOrder, onSubmit }: ServiceOrderFor
     }
   }
 
-  const handleAddService = () => {
+  const handleAddService = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+    }
+
     if (!newService.name) {
       newService.name = newService.description
     }
@@ -214,7 +240,10 @@ export function ServiceOrderForm({ id, serviceOrder, onSubmit }: ServiceOrderFor
     }
   }
 
-  const handleRemoveService = (index: number) => {
+  const handleRemoveService = (index: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault()
+    }
     setItems(items.filter((_, i) => i !== index))
   }
 
@@ -369,7 +398,7 @@ export function ServiceOrderForm({ id, serviceOrder, onSubmit }: ServiceOrderFor
                 name="attendantName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre del Técnico</FormLabel>
+                    <FormLabel>Atención</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -398,138 +427,177 @@ export function ServiceOrderForm({ id, serviceOrder, onSubmit }: ServiceOrderFor
                 <CardTitle>Servicios</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Search className="h-4 w-4" />
-                    <Input
-                      type="text"
-                      placeholder="Buscar servicio..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                  <ScrollArea className="h-[200px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Código</TableHead>
-                          <TableHead>Descripción</TableHead>
-                          <TableHead>Precio Unitario</TableHead>
-                          <TableHead>Acción</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredServices.map((service) => (
-                          <TableRow key={service.id}>
-                            <TableCell>{service.code}</TableCell>
-                            <TableCell>{service.description}</TableCell>
-                            <TableCell>{service.unitPrice}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  setNewService({
-                                    code: service.code,
-                                    description: service.description,
-                                    name: service.description,
-                                    unitPrice: service.unitPrice,
-                                    quantity: 1,
-                                    days: 1,
-                                  })
-                                }
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
+                <div className="space-y-6">
+                  {/* Search and add services */}
+                  <div className="space-y-4 border p-4 rounded-md">
+                    <h3 className="text-lg font-medium">Buscar y Agregar Servicios</h3>
+                    <div className="flex items-center space-x-2">
+                      <Search className="h-4 w-4" />
+                      <Input
+                        type="text"
+                        placeholder="Buscar servicio..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                    <ScrollArea className="h-[200px] border rounded-md">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Código</TableHead>
+                            <TableHead>Descripción</TableHead>
+                            <TableHead>Precio Unitario</TableHead>
+                            <TableHead>Acción</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                  <div className="grid grid-cols-6 gap-4">
-                    <Input
-                      placeholder="Código"
-                      value={newService.code || ""}
-                      onChange={(e) => setNewService({ ...newService, code: e.target.value })}
-                    />
-                    <Input
-                      placeholder="Descripción"
-                      value={newService.description || ""}
-                      onChange={(e) => setNewService({ ...newService, description: e.target.value })}
-                    />
-                    <Input
-                      placeholder="Nombre"
-                      value={newService.name || ""}
-                      onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Cantidad"
-                      value={newService.quantity || ""}
-                      onChange={(e) => setNewService({ ...newService, quantity: Number(e.target.value) })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Precio Unitario"
-                      value={newService.unitPrice || ""}
-                      onChange={(e) => setNewService({ ...newService, unitPrice: Number(e.target.value) })}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Días"
-                      value={newService.days || ""}
-                      onChange={(e) => setNewService({ ...newService, days: Number(e.target.value) })}
-                    />
-                  </div>
-                  <Button type="button" onClick={handleAddService}>
-                    Agregar Servicio
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredServices.map((service) => (
+                            <TableRow key={service.id}>
+                              <TableCell>{service.code}</TableCell>
+                              <TableCell>{service.description}</TableCell>
+                              <TableCell>{service.unitPrice}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  type="button"
+                                  onClick={() =>
+                                    setNewService({
+                                      code: service.code,
+                                      description: service.description,
+                                      name: service.description,
+                                      unitPrice: service.unitPrice,
+                                      quantity: 1,
+                                      days: 1,
+                                    })
+                                  }
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Servicios Seleccionados</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Código</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Cantidad</TableHead>
-                      <TableHead>Precio Unitario</TableHead>
-                      <TableHead>Días</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Acción</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((item, index) => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.code}</TableCell>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{item.unitPrice}</TableCell>
-                        <TableCell>{item.days}</TableCell>
-                        <TableCell>{(item.quantity * item.unitPrice * (item.days || 1)).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => handleRemoveService(index)}>
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <div className="mt-4 flex justify-end space-x-2">
-                  <div>Subtotal: {totals.subtotal.toFixed(2)}</div>
-                  <div>IGV: {totals.igv.toFixed(2)}</div>
-                  <div>Total: {totals.total.toFixed(2)}</div>
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Agregar Servicio Manualmente</h4>
+                      <div className="grid grid-cols-6 gap-4">
+                        <Input
+                          placeholder="Código"
+                          value={newService.code || ""}
+                          onChange={(e) => setNewService({ ...newService, code: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Descripción"
+                          value={newService.description || ""}
+                          onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Nombre"
+                          value={newService.name || ""}
+                          onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Cantidad"
+                          value={newService.quantity || ""}
+                          onChange={(e) => setNewService({ ...newService, quantity: Number(e.target.value) })}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Precio Unitario"
+                          value={newService.unitPrice || ""}
+                          onChange={(e) => setNewService({ ...newService, unitPrice: Number(e.target.value) })}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Días"
+                          value={newService.days || ""}
+                          onChange={(e) => setNewService({ ...newService, days: Number(e.target.value) })}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleAddService()
+                        }}
+                        className="w-full"
+                      >
+                        Agregar Servicio
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Selected services */}
+                  <div className="border p-4 rounded-md">
+                    <h3 className="text-lg font-medium mb-4">Servicios Seleccionados ({items.length})</h3>
+                    {items.length > 0 ? (
+                      <>
+                        <div className="rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Código</TableHead>
+                                <TableHead>Descripción</TableHead>
+                                <TableHead>Nombre</TableHead>
+                                <TableHead>Cantidad</TableHead>
+                                <TableHead>Precio Unitario</TableHead>
+                                <TableHead>Días</TableHead>
+                                <TableHead>Total</TableHead>
+                                <TableHead>Acción</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {items.map((item, index) => (
+                                <TableRow key={item.id || index}>
+                                  <TableCell>{item.code}</TableCell>
+                                  <TableCell>{item.description}</TableCell>
+                                  <TableCell>{item.name}</TableCell>
+                                  <TableCell>{item.quantity}</TableCell>
+                                  <TableCell>{item.unitPrice}</TableCell>
+                                  <TableCell>{item.days}</TableCell>
+                                  <TableCell>
+                                    {(item.quantity * item.unitPrice * (item.days || 1)).toFixed(2)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        handleRemoveService(index)
+                                      }}
+                                    >
+                                      <Trash className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        <div className="mt-4 flex justify-end space-x-4">
+                          <div className="text-sm">
+                            Subtotal: <span className="font-medium">{totals.subtotal.toFixed(2)}</span>
+                          </div>
+                          <div className="text-sm">
+                            IGV (18%): <span className="font-medium">{totals.igv.toFixed(2)}</span>
+                          </div>
+                          <div className="text-sm font-bold">
+                            Total: <span>{totals.total.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No hay servicios seleccionados. Agregue servicios desde la sección superior.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

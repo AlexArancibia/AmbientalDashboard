@@ -10,7 +10,7 @@ interface JsPDFWithAutoTable extends jsPDF {
 }
 
 // Define colors - Using dark blue (tuplas exactas de 3 elementos)
-const DARK_BLUE_COLOR: [number, number, number] = [0, 51, 102] // RGB for dark blue
+const DARK_BLUE_COLOR: [number, number, number] = [0, 40, 102] // RGB for dark blue
 const WHITE_COLOR: [number, number, number] = [255, 255, 255]
 const BLACK_COLOR: [number, number, number] = [0, 0, 0]
 
@@ -35,11 +35,8 @@ export function generateQuotationPDF(quotation: Quotation) {
     // ===== LOGO =====
     // Para entornos de servidor, usar la ruta del sistema de archivos
     // En entornos de navegador, usar una URL base64 o una URL pública
-    const logoUrl =
-      process.env.NODE_ENV === "production"
-        ? "/logo.png" // En producción, usar la URL relativa
-        : "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo1_Mesa%20de%20trabajo%201-0ISshlwxkIt1PkYdW8uhLYlrEyn5P6.png" // URL de respaldo
-
+    const logoUrl = "/logo.png" // En producción, usar la URL relativa
+       
     // Agregar logo
     doc.addImage(logoUrl, "PNG", 15, 15, 60, 25)
 
@@ -47,7 +44,7 @@ export function generateQuotationPDF(quotation: Quotation) {
     // Título centrado
     doc.setFontSize(14)
     doc.setFont("helvetica", "bold")
-    doc.text(`COTIZACIÓN Nº ${quotation.number || "SN"}`, pageWidth / 2, 20, { align: "center" })
+    doc.text(`COTIZACIÓN Nº ${quotation.number || "SN"}`, 3 * pageWidth / 4, 20, { align: "center" })
 
     // Información de la empresa alineada a la derecha
     doc.setFontSize(9)
@@ -60,9 +57,9 @@ export function generateQuotationPDF(quotation: Quotation) {
     // ===== CLIENT INFORMATION =====
     autoTable(doc, {
       startY: 55,
-      head: [["CLIENTE", "RUC", "", ""]],
+      head: [["Informacion del Cliente", "RUC ", "", ""]],
       body: [
-        [quotation.client.name, quotation.client.ruc, "RUC", quotation.client.ruc],
+        ["Razon Social", quotation.client.name, "RUC", quotation.client.ruc],
         ["Dirección", quotation.client.address || "-", "Email", quotation.client.email || "-"],
         [
           "Atención",
@@ -93,7 +90,7 @@ export function generateQuotationPDF(quotation: Quotation) {
 
     // ===== PAYMENT INFORMATION =====
     autoTable(doc, {
-      startY: doc.previousAutoTable?.finalY ? doc.previousAutoTable.finalY + 5 : 85,
+      startY: doc.previousAutoTable?.finalY ? doc.previousAutoTable.finalY + 10 : 90,
       head: [["FORMA DE PAGO", "LUGAR DE MONITOREO", "Moneda utilizada"]],
       body: [
         [
@@ -112,12 +109,19 @@ export function generateQuotationPDF(quotation: Quotation) {
         textColor: WHITE_COLOR,
         fontStyle: "bold" as FontStyle,
       },
+
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 90 },
+        2: { cellWidth: 50 },
+ 
+      },
     })
 
     // ===== ITEMS TABLE =====
     const items = quotation.items || []
     autoTable(doc, {
-      startY: doc.previousAutoTable?.finalY ? doc.previousAutoTable.finalY + 5 : 100,
+      startY: doc.previousAutoTable?.finalY ? doc.previousAutoTable.finalY + 10 : 105 ,
       head: [["CANT", "DIAS", "SERVICIO", "DESCRIPCIÓN", "P.UNI", "IMPORTE"]],
       body: items.map((item: QuotationItem) => [
         item.quantity,
@@ -148,7 +152,7 @@ export function generateQuotationPDF(quotation: Quotation) {
     })
 
     // ===== TOTALS =====
-    const finalY = doc.previousAutoTable?.finalY ? doc.previousAutoTable.finalY + 5 : 130
+    const finalY = 115 + items.length*10
 
     doc.setFontSize(9)
     doc.setFont("helvetica", "normal")

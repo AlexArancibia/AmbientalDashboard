@@ -58,8 +58,8 @@ export function PurchaseOrderDetail({ purchaseOrder }: PurchaseOrderDetailProps)
 
   const handlePrint = () => {
     const doc = generatePurchaseOrderPDF(purchaseOrder)
-    doc.autoPrint()
-    window.open(doc.output("bloburl"), "_blank")
+    const fileName = `${purchaseOrder.number.replace(/\//g, "-")}.pdf`
+    doc.save(fileName)
 
     toast({
       title: "Imprimiendo",

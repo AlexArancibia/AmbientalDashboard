@@ -4,7 +4,7 @@ import type { ServiceOrder } from "@/types"
 import { format } from "date-fns"
 
 // Define colors as RGB arrays
-const DARK_BLUE_COLOR: [number, number, number] = [0, 20, 53] // RGB for dark navy blue
+const DARK_BLUE_COLOR: [number, number, number] = [0, 40, 102] // RGB for dark navy blue
 const WHITE_COLOR: [number, number, number] = [255, 255, 255]
 const BLACK_COLOR: [number, number, number] = [0, 0, 0]
 
@@ -41,14 +41,14 @@ export function generateServiceOrderPDF(serviceOrder: ServiceOrder) {
   // Client Information
   autoTable(doc, {
     startY: 55,
-    head: [["DETALLES DE LA ORDEN DE SERVICIO", "", "", ""]],
+    head: [["DETALLES", "", "", ""]],
     body: [
       ["Número", serviceOrder.number, "Fecha", format(new Date(serviceOrder.date), "dd/MM/yyyy")],
       ["Cliente", serviceOrder.client.name, "RUC", serviceOrder.client.ruc],
       ["Dirección", serviceOrder.client.address, "Email", serviceOrder.client.email],
-      ["Atención", serviceOrder.client.contactPerson || "-", "Moneda", serviceOrder.currency],
-      ["Gestor", serviceOrder.gestor.name, "Técnico", serviceOrder.attendantName || "-"],
-      ["Términos de Pago", serviceOrder.paymentTerms || "-", "Estado", serviceOrder.status],
+      ["Atención", serviceOrder.attendantName || "-", "Moneda", serviceOrder.currency],
+      ["Gestor", serviceOrder.gestor.name || "-", "Términos de Pago", serviceOrder.paymentTerms || "-"],
+ 
     ],
     theme: "grid",
     styles: {
