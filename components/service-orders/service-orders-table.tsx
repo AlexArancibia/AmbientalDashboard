@@ -17,8 +17,9 @@ import {
   Calendar,
   User,
   DollarSign,
+  FileDown,
 } from "lucide-react"
-import { ServiceOrderStatus } from "@/types"
+import { ServiceOrder, ServiceOrderStatus } from "@/types"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -34,7 +35,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
+import { generateServiceOrderPDF } from "@/lib/generateServiceOrderPDF"
+import { toast } from "@/components/ui/use-toast"
 export function ServiceOrdersTable() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -58,6 +60,27 @@ export function ServiceOrdersTable() {
         order.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())) &&
       (statusFilter === "all" || order.status === statusFilter),
   )
+
+  const handleGeneratePDF = (order: ServiceOrder) => {
+    try {
+      const doc = generateServiceOrderPDF(order)
+      const fileName = `order_servicio_${order.number.replace(/\//g, "-")}.pdf`
+      doc.save(fileName)
+
+      toast({
+        title: "PDF generado",
+        description: `El PDF de la cotización ${order.number} ha sido generado exitosamente.`,
+      })
+    } catch (error) {
+      console.error("Error al generar PDF:", error)
+      toast({
+        title: "Error al generar PDF",
+        description: "Ocurrió un error al generar el PDF. Por favor, inténtelo de nuevo.",
+        variant: "destructive",
+      })
+    }
+  }
+
 
   const getStatusBadge = (status: ServiceOrderStatus) => {
     switch (status) {
@@ -252,11 +275,17 @@ export function ServiceOrdersTable() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[160px]">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem asChild>
                             <Link href={`/service-orders/${order.id}`} className="cursor-pointer">
                               <EyeIcon className="mr-2 h-4 w-4" />
                               <span>Ver detalles</span>
                             </Link>
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuItem onClick={() => handleGeneratePDF(order)} className="cursor-pointer">
+                            <FileDown className="mr-2 h-4 w-4" />
+                            <span>Generar PDF</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <Link href={`/service-orders/${order.id}/edit`} className="cursor-pointer">
@@ -264,6 +293,7 @@ export function ServiceOrdersTable() {
                               <span>Editar</span>
                             </Link>
                           </DropdownMenuItem>
+                          
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => {
