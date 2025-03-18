@@ -10,15 +10,30 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Currency, QuotationStatus, type Quotation, type QuotationItem } from "@/types"
+import { Currency, QuotationStatus, type Quotation, type QuotationItem, CompanyType } from "@/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
 import { useQuotationStore } from "@/lib/stores/useQuotationStore"
 import { useClientStore } from "@/lib/stores/useClientStore"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Search, Plus, X } from "lucide-react"
+import { Clipboard, Database, FileEdit, FileText, Loader2, Package, PlusCircle, Save, ShoppingCart } from "lucide-react"
+import { NewClientForm } from "@/components/clients/new-client-form"
+
+const DEFAULT_NOTES = `Una vez aceptada la cotización envienos su confirmación por vía mail,
+para iniciar con las coordinaciones del presente servicio. E-mail:
+ventas@ambientalpe.com N.CUENTA. BBVA SOLES:
+0011039694020045050 CCI:01139600020045050694 (B.NACIÓN) CTA.
+DE DETRACCIÓN : 00591113992 Nº DE CCI: 018591000591113992`
 
 const formSchema = z.object({
   number: z.string().min(1, { message: "El número de cotización es requerido" }),
@@ -57,6 +72,9 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
   const [searchTerm, setSearchTerm] = useState("")
   const [services, setServices] = useState<any[]>([])
   const [showNewServiceForm, setShowNewServiceForm] = useState(false)
+  const [filteredClients, setFilteredClients] = useState(clients)
+  const [localClients, setLocalClients] = useState(clients)
+  const [open, setOpen] = useState(false)
 
   // Format date for the form input if it exists
   const formatDateForInput = (date: Date | string | undefined) => {
@@ -74,7 +92,7 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
       equipmentReleaseDate: formatDateForInput(quotation?.equipmentReleaseDate) || "",
       validityDays: quotation?.validityDays || 15,
       status: (quotation?.status as QuotationStatus) || QuotationStatus.DRAFT,
-      notes: quotation?.notes || "",
+      notes: quotation?.notes || DEFAULT_NOTES,
       considerDays: quotation?.considerDays || 1,
       returnDate: formatDateForInput(quotation?.returnDate) || "",
       monitoringLocation: quotation?.monitoringLocation || "", // Ahora desde quotation
@@ -122,6 +140,17 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
     const total = subtotal + igv
     setTotals({ subtotal, igv, total })
   }, [items])
+
+  useEffect(() => {
+    const filtered = clients.filter(
+      (client) =>
+        client.type === CompanyType.CLIENT &&
+        (client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          client.ruc.includes(searchTerm) ||
+          client.email.toLowerCase().includes(searchTerm.toLowerCase())),
+    )
+    setFilteredClients(filtered)
+  }, [clients, searchTerm])
 
   // Filter services based on search term
   const filteredServices = services.filter(
@@ -327,524 +356,668 @@ export function QuotationForm({ quotation }: QuotationFormProps) {
     return symbol + amount.toFixed(2)
   }
 
+  const handleClientCreated = (newClient: any) => {
+    // Add the new client to the list and select it
+    setLocalClients([...localClients, newClient])
+    setFilteredClients([...filteredClients, newClient])
+    form.setValue("clientId", newClient.id)
+    toast({
+      title: "Cliente creado",
+      description: `El cliente ${newClient.name} ha sido creado exitosamente.`,
+    })
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{quotation?.id ? "Editar Cotización" : "Crear Nueva Cotización"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Número de Cotización</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="clientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione un cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Moneda</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione una moneda" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={Currency.PEN}>PEN (S/.)</SelectItem>
-                        <SelectItem value={Currency.USD}>USD ($)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="equipmentReleaseDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fecha de Entrega</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="validityDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Validez (días)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        value={field.value}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione un estado" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={QuotationStatus.DRAFT}>Borrador</SelectItem>
-                        <SelectItem value={QuotationStatus.SENT}>Enviada</SelectItem>
-                        <SelectItem value={QuotationStatus.ACCEPTED}>Aceptada</SelectItem>
-                        <SelectItem value={QuotationStatus.REJECTED}>Rechazada</SelectItem>
-                        <SelectItem value={QuotationStatus.EXPIRED}>Expirada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* Campos añadidos para considerDays y returnDate */}
-              <FormField
-                control={form.control}
-                name="considerDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Días Considerados</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="1"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        value={field.value}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="returnDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fecha de Retorno</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {/* Nuevos campos: monitoringLocation y creditLine */}
-              <FormField
-                control={form.control}
-                name="monitoringLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lugar de Monitoreo</FormLabel>
-                    <FormControl>
-                      <Input {...field} value={field.value || ""} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="creditLine"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Línea de Crédito</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        value={field.value || 0}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notas</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} value={field.value || ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* New Services Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Servicios</h3>
-              <Tabs defaultValue="existing" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="existing">Servicios Existentes</TabsTrigger>
-                  <TabsTrigger value="new">Nuevo Servicio</TabsTrigger>
-                </TabsList>
-                <TabsContent value="existing" className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Search className="w-4 h-4 text-gray-500" />
-                    <Input
-                      type="search"
-                      placeholder="Buscar servicio..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="flex-grow"
-                    />
-                  </div>
-                  <ScrollArea className="h-72 w-full rounded-md border">
-                    <div className="p-4 space-y-2">
-                      {filteredServices.map((service) => (
-                        <div
-                          key={service.id}
-                          className="flex items-center justify-between p-2 hover:bg-gray-100 rounded-lg"
-                        >
-                          <div>
-                            <p className="font-medium">{service.name}</p>
-                            <p className="text-sm text-gray-500">
-                              {service.code} - {service.description}
-                            </p>
-                          </div>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Plus className="w-4 h-4 mr-1" /> Agregar
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Agregar Servicio</DialogTitle>
-                              </DialogHeader>
-                              <div className="grid gap-4 py-4">
-                                <FormField
-                                  control={form.control}
-                                  name="quantity"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Cantidad</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          min="1"
-                                          {...field}
-                                          onChange={(e) => field.onChange(Number(e.target.value))}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name="days"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Días</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          min="1"
-                                          {...field}
-                                          onChange={(e) => field.onChange(Number(e.target.value))}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                <FormField
-                                  control={form.control}
-                                  name="unitPrice"
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Precio Unitario</FormLabel>
-                                      <FormControl>
-                                        <Input
-                                          type="number"
-                                          min="0"
-                                          step="0.01"
-                                          {...field}
-                                          onChange={(e) => field.onChange(Number(e.target.value))}
-                                          value={field.value || service.unitPrice}
-                                        />
-                                      </FormControl>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              <Button onClick={() => addServiceItem(service.id)}>Agregar a la Cotización</Button>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </TabsContent>
-                <TabsContent value="new" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="newServiceCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Código</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="newServiceName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nombre</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+    <div className="w-full max-w-7xl mx-auto">
+      <Card className="border-border shadow-md">
+        <CardHeader className="bg-gradient-to-r from-background to-muted/50 border-b border-border">
+          <CardTitle className="text-xl font-semibold flex items-center">
+            {quotation?.id ? (
+              <>
+                <FileEdit className="mr-2 h-5 w-5 text-primary" />
+                Editar Cotización
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-5 w-5 text-primary" />
+                Crear Nueva Cotización
+              </>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Clipboard className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-medium">Información General</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 bg-muted/30 rounded-lg">
                   <FormField
                     control={form.control}
-                    name="newServiceDescription"
+                    name="number"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Descripción</FormLabel>
+                        <FormLabel className="font-medium">Número de Cotización</FormLabel>
                         <FormControl>
-                          <Textarea {...field} />
+                          <Input {...field} className="border-input" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="quantity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cantidad</FormLabel>
+                  <FormField
+                    control={form.control}
+                    name="clientId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Cliente</FormLabel>
+                        <div className="flex items-center space-x-2">
+                          <Select onValueChange={field.onChange} value={field.value}  >
+                            <FormControl>
+                              <SelectTrigger className="border-input">
+                                <SelectValue placeholder="Seleccione un cliente" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {filteredClients.map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Dialog open={open} onOpenChange={setOpen}>
+                            <DialogTrigger asChild>
+                              <Button type="button" variant="outline" size="sm">
+                                <Plus className="h-4 w-4 mr-1" /> Nuevo
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                              <DialogHeader>
+                                <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+                                <DialogDescription>
+                                  Complete el formulario para crear un nuevo cliente.
+                                </DialogDescription>
+                              </DialogHeader>
+                              <NewClientForm
+                                onClientCreated={handleClientCreated}
+                                defaultType={CompanyType.CLIENT}
+                                onClose={() => setOpen(false)}
+                              />
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Moneda</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <Input
-                              type="number"
-                              min="1"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
+                            <SelectTrigger className="border-input">
+                              <SelectValue placeholder="Seleccione una moneda" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="days"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Días</FormLabel>
+                          <SelectContent>
+                            <SelectItem value={Currency.PEN}>PEN (S/.)</SelectItem>
+                            <SelectItem value={Currency.USD}>USD ($)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="equipmentReleaseDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Fecha de Entrega</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} className="border-input" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="validityDays"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Validez (días)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value}
+                            className="border-input"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Estado</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <Input
-                              type="number"
-                              min="1"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
+                            <SelectTrigger className="border-input">
+                              <SelectValue placeholder="Seleccione un estado" />
+                            </SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="unitPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Precio Unitario</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              {...field}
-                              onChange={(e) => field.onChange(Number(e.target.value))}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <Button type="button" onClick={addNewService}>
-                    Crear y Agregar Servicio
-                  </Button>
-                </TabsContent>
-              </Tabs>
-            </div>
-
-            {/* Selected Services Section */}
-            {items.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Servicios Seleccionados</h3>
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Código
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Descripción
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Cantidad
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Días
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Precio Unitario
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Total
-                        </th>
-                        <th scope="col" className="relative px-6 py-3">
-                          <span className="sr-only">Acciones</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {items.map((item, index) => (
-                        <tr key={item.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.code}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.quantity}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.days}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatCurrency(item.unitPrice)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatCurrency(item.quantity * item.days * item.unitPrice)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <Button variant="ghost" size="sm" onClick={() => removeItem(index)}>
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex justify-end space-x-4 text-sm">
-                  <div>
-                    Subtotal: <span className="font-semibold">{formatCurrency(totals.subtotal)}</span>
-                  </div>
-                  <div>
-                    IGV (18%): <span className="font-semibold">{formatCurrency(totals.igv)}</span>
-                  </div>
-                  <div>
-                    Total: <span className="font-semibold">{formatCurrency(totals.total)}</span>
-                  </div>
+                          <SelectContent>
+                            <SelectItem value={QuotationStatus.DRAFT}>Borrador</SelectItem>
+                            <SelectItem value={QuotationStatus.SENT}>Enviada</SelectItem>
+                            <SelectItem value={QuotationStatus.ACCEPTED}>Aceptada</SelectItem>
+                            <SelectItem value={QuotationStatus.REJECTED}>Rechazada</SelectItem>
+                            <SelectItem value={QuotationStatus.EXPIRED}>Expirada</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="considerDays"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Días Considerados</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value}
+                            className="border-input"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="returnDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Fecha de Retorno</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} className="border-input" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="monitoringLocation"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Lugar de Monitoreo</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} className="border-input" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="creditLine"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Línea de Crédito</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            {...field}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                            value={field.value || 0}
+                            className="border-input"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
-            )}
 
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => router.push("/quotations")} type="button">
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Guardando..." : quotation?.id ? "Actualizar Cotización" : "Crear Cotización"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2 mb-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-medium">Notas Adicionales</h3>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Notas</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            value={field.value || ""}
+                            className="min-h-[120px] border-input"
+                            placeholder="Ingrese notas o condiciones adicionales para esta cotización..."
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-medium">Servicios</h3>
+                </div>
+                <div className="bg-muted/30 rounded-lg p-4">
+                  <Tabs defaultValue="existing" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                      <TabsTrigger value="existing" className="text-sm data-[state=active]:bg-primary/10">
+                        <Database className="w-4 h-4 mr-2" />
+                        Servicios Existentes
+                      </TabsTrigger>
+                      <TabsTrigger value="new" className="text-sm data-[state=active]:bg-primary/10">
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Nuevo Servicio
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="existing" className="space-y-4 pt-2">
+                      <div className="flex items-center space-x-2 bg-background rounded-md border border-input px-3 py-2">
+                        <Search className="w-4 h-4 text-muted-foreground" />
+                        <Input
+                          type="search"
+                          placeholder="Buscar servicio por nombre o código..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="flex-grow border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                        />
+                      </div>
+                      <ScrollArea className="h-72 w-full rounded-md border border-input bg-background">
+                        <div className="p-4 space-y-2">
+                          {filteredServices.length > 0 ? (
+                            filteredServices.map((service) => (
+                              <div
+                                key={service.id}
+                                className="flex items-center justify-between p-3 hover:bg-muted rounded-lg border border-border/40 transition-colors"
+                              >
+                                <div>
+                                  <p className="font-medium text-foreground">{service.name}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    <span className="inline-block bg-muted text-muted-foreground rounded px-1 mr-2">
+                                      {service.code}
+                                    </span>
+                                    {service.description}
+                                  </p>
+                                </div>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm" className="ml-2">
+                                      <Plus className="w-4 h-4 mr-1" /> Agregar
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle className="flex items-center">
+                                        <Package className="mr-2 h-5 w-5 text-primary" />
+                                        Agregar Servicio
+                                      </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                      <div className="bg-muted/30 p-3 rounded-md mb-2">
+                                        <h4 className="font-medium text-foreground">{service.name}</h4>
+                                        <p className="text-sm text-muted-foreground">
+                                          {service.code} - {service.description}
+                                        </p>
+                                      </div>
+                                      <FormField
+                                        control={form.control}
+                                        name="quantity"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Cantidad</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                min="1"
+                                                {...field}
+                                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                                className="border-input"
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="days"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Días</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                min="1"
+                                                {...field}
+                                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                                className="border-input"
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name="unitPrice"
+                                        render={({ field }) => (
+                                          <FormItem>
+                                            <FormLabel>Precio Unitario</FormLabel>
+                                            <FormControl>
+                                              <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                {...field}
+                                                onChange={(e) => field.onChange(Number(e.target.value))}
+                                                value={field.value || service.unitPrice}
+                                                className="border-input"
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
+                                    <Button onClick={() => addServiceItem(service.id)} className="w-full">
+                                      <Plus className="w-4 h-4 mr-2" /> Agregar a la Cotización
+                                    </Button>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+                              <Search className="h-10 w-10 text-muted-foreground mb-2" />
+                              <p className="text-muted-foreground">No se encontraron servicios</p>
+                              <p className="text-sm text-muted-foreground">Intente con otro término de búsqueda</p>
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </TabsContent>
+                    <TabsContent
+                      value="new"
+                      className="space-y-4 pt-2 bg-background rounded-md p-4 border border-input"
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="newServiceCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="font-medium">Código</FormLabel>
+                              <FormControl>
+                                <Input {...field} className="border-input" placeholder="Ej: SRV-001" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="newServiceName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="font-medium">Nombre</FormLabel>
+                              <FormControl>
+                                <Input {...field} className="border-input" placeholder="Nombre del servicio" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="newServiceDescription"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-medium">Descripción</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                {...field}
+                                className="border-input"
+                                placeholder="Descripción detallada del servicio"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="quantity"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="font-medium">Cantidad</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                  className="border-input"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="days"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="font-medium">Días</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                  className="border-input"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="unitPrice"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="font-medium">Precio Unitario</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  {...field}
+                                  onChange={(e) => field.onChange(Number(e.target.value))}
+                                  className="border-input"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <Button type="button" onClick={addNewService} className="w-full mt-2" variant="outline">
+                        <PlusCircle className="w-4 h-4 mr-2" /> Crear y Agregar Servicio
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </div>
+
+              {items.length > 0 && (
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <ShoppingCart className="h-5 w-5 text-primary" />
+                    <h3 className="text-lg font-medium">Servicios Seleccionados</h3>
+                  </div>
+                  <div className="bg-background rounded-lg border border-input overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-border">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                            >
+                              Código
+                            </th>
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                            >
+                              Descripción
+                            </th>
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                            >
+                              Cantidad
+                            </th>
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                            >
+                              Días
+                            </th>
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                            >
+                              Precio Unitario
+                            </th>
+                            <th
+                              scope="col"
+                              className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                            >
+                              Total
+                            </th>
+                            <th scope="col" className="relative px-6 py-3">
+                              <span className="sr-only">Acciones</span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-background divide-y divide-border">
+                          {items.map((item, index) => (
+                            <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
+                                {item.code}
+                              </td>
+                              <td className="px-6 py-4 text-sm text-foreground">{item.description}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                                {item.quantity}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{item.days}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                                {formatCurrency(item.unitPrice)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
+                                {formatCurrency(item.quantity * item.days * item.unitPrice)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeItem(index)}
+                                  className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="bg-muted/30 p-4 border-t border-border">
+                      <div className="flex flex-col items-end space-y-1">
+                        <div className="grid grid-cols-2 gap-x-4 text-sm w-64">
+                          <div className="text-muted-foreground">Subtotal:</div>
+                          <div className="font-medium text-right">{formatCurrency(totals.subtotal)}</div>
+
+                          <div className="text-muted-foreground">IGV (18%):</div>
+                          <div className="font-medium text-right">{formatCurrency(totals.igv)}</div>
+
+                          <div className="text-foreground font-semibold pt-2 border-t border-border">Total:</div>
+                          <div className="font-bold text-right text-primary pt-2 border-t border-border">
+                            {formatCurrency(totals.total)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-3 pt-6">
+                <Button variant="outline" onClick={() => router.push("/quotations")} type="button" className="px-5">
+                  <X className="mr-2 h-4 w-4" /> Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-5"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {quotation?.id ? "Actualizando..." : "Creando..."}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      {quotation?.id ? "Actualizar Cotización" : "Crear Cotización"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

@@ -15,29 +15,48 @@ const styles = StyleSheet.create({
     padding: 30,
     fontSize: 10,
     fontFamily: "Inter",
+    color: "#333",
   },
   header: {
     flexDirection: "row",
     marginBottom: 20,
+    alignItems: "center",
   },
   logo: {
     width: 150,
     height: 80,
     marginRight: 20,
+    objectFit: "contain",
   },
   headerInfo: {
     flex: 1,
   },
   quotationNumber: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "bold",
     marginBottom: 5,
+    color: "#1a1a1a",
   },
   companyInfo: {
     marginBottom: 3,
+    color: "#4b5563",
   },
   clientSection: {
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 4,
+    padding: 10,
+    backgroundColor: "#f9fafb",
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#1f2937",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+    paddingBottom: 4,
   },
   table: {
     marginTop: 10,
@@ -47,16 +66,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#000",
     backgroundColor: "#f0f9ff",
-    padding: 5,
+    padding: 8,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
   },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    padding: 5,
+    borderBottomColor: "#e5e7eb",
+    padding: 8,
   },
   columnHeader: {
     fontWeight: "bold",
+    color: "#1f2937",
   },
   column: {
     flex: 1,
@@ -64,6 +86,9 @@ const styles = StyleSheet.create({
   totals: {
     marginTop: 20,
     alignItems: "flex-end",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingTop: 10,
   },
   totalRow: {
     flexDirection: "row",
@@ -71,14 +96,36 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     width: 100,
+    color: "#4b5563",
   },
   totalValue: {
     width: 100,
     textAlign: "right",
   },
+  grandTotal: {
+    fontWeight: "bold",
+    fontSize: 12,
+    color: "#1f2937",
+  },
   footer: {
     marginTop: 30,
     fontSize: 8,
+    color: "#6b7280",
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+    paddingTop: 10,
+  },
+  infoRow: {
+    flexDirection: "row",
+    marginBottom: 5,
+  },
+  infoLabel: {
+    width: 120,
+    fontWeight: "bold",
+    color: "#4b5563",
+  },
+  infoValue: {
+    flex: 1,
   },
 })
 
@@ -96,10 +143,7 @@ export function QuotationPDF({ quotation }: QuotationPDFProps) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-Wzj7rdf2YVOy5GtEbtpqulpWPANUHk.png"
-            style={styles.logo}
-          />
+          <Image src="/logo.png" style={styles.logo} />
           <View style={styles.headerInfo}>
             <Text style={styles.quotationNumber}>COTIZACIÓN Nº {quotation.number}</Text>
             <Text style={styles.companyInfo}>SOCIEDAD GENERAL AMBIENTAL E INGENIEROS SAC-20608328786</Text>
@@ -111,23 +155,30 @@ export function QuotationPDF({ quotation }: QuotationPDFProps) {
 
         {/* Client Information */}
         <View style={styles.clientSection}>
-          <View style={styles.tableRow}>
-            <Text style={[styles.column, styles.columnHeader]}>CLIENTE</Text>
-            <Text style={styles.column}>{quotation.client.name}</Text>
-            <Text style={[styles.column, styles.columnHeader]}>RUC</Text>
-            <Text style={styles.column}>{quotation.client.ruc}</Text>
+          <Text style={styles.sectionTitle}>INFORMACIÓN DEL CLIENTE</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>CLIENTE:</Text>
+            <Text style={styles.infoValue}>{quotation.client.name}</Text>
           </View>
-          <View style={styles.tableRow}>
-            <Text style={[styles.column, styles.columnHeader]}>Dirección</Text>
-            <Text style={styles.column}>{quotation.client.address}</Text>
-            <Text style={[styles.column, styles.columnHeader]}>Email</Text>
-            <Text style={styles.column}>{quotation.client.email}</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>RUC:</Text>
+            <Text style={styles.infoValue}>{quotation.client.ruc}</Text>
           </View>
-          <View style={styles.tableRow}>
-            <Text style={[styles.column, styles.columnHeader]}>Atención</Text>
-            <Text style={styles.column}>{quotation.client.contactPerson || "-"}</Text>
-            <Text style={[styles.column, styles.columnHeader]}>Línea de crédito</Text>
-            <Text style={styles.column}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>DIRECCIÓN:</Text>
+            <Text style={styles.infoValue}>{quotation.client.address}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>EMAIL:</Text>
+            <Text style={styles.infoValue}>{quotation.client.email}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>ATENCIÓN:</Text>
+            <Text style={styles.infoValue}>{quotation.client.contactPerson || "-"}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>LÍNEA DE CRÉDITO:</Text>
+            <Text style={styles.infoValue}>
               {quotation.client.creditLine ? formatCurrency(quotation.client.creditLine) : "-"}
             </Text>
           </View>
@@ -135,21 +186,22 @@ export function QuotationPDF({ quotation }: QuotationPDFProps) {
 
         {/* Items Table */}
         <View style={styles.table}>
+          <Text style={styles.sectionTitle}>DETALLE DE SERVICIOS</Text>
           <View style={styles.tableHeader}>
-            <Text style={[styles.column, { flex: 0.5 }]}>CANT</Text>
-            <Text style={[styles.column, { flex: 0.5 }]}>DÍAS</Text>
-            <Text style={[styles.column, { flex: 2 }]}>EQUIPO</Text>
-            <Text style={[styles.column, { flex: 2 }]}>MODELO</Text>
-            <Text style={[styles.column, { flex: 1 }]}>P.UNI</Text>
-            <Text style={[styles.column, { flex: 1 }]}>IMPORTE</Text>
+            <Text style={[styles.column, styles.columnHeader, { flex: 0.5 }]}>CANT</Text>
+            <Text style={[styles.column, styles.columnHeader, { flex: 0.5 }]}>DÍAS</Text>
+            <Text style={[styles.column, styles.columnHeader, { flex: 2 }]}>EQUIPO</Text>
+            <Text style={[styles.column, styles.columnHeader, { flex: 2 }]}>MODELO</Text>
+            <Text style={[styles.column, styles.columnHeader, { flex: 1 }]}>P.UNI</Text>
+            <Text style={[styles.column, styles.columnHeader, { flex: 1 }]}>IMPORTE</Text>
           </View>
           {quotation.items.map((item, index) => (
             <View key={index} style={styles.tableRow}>
               <Text style={[styles.column, { flex: 0.5 }]}>{item.quantity}</Text>
               <Text style={[styles.column, { flex: 0.5 }]}>{item.days}</Text>
-              <Text style={[styles.column, { flex: 2 }]}>{item.equipment.name}</Text>
+              <Text style={[styles.column, { flex: 2 }]}>{item.name}</Text>
               <Text style={[styles.column, { flex: 2 }]}>{`${item.quantity} ${
-                item.equipment.name
+                item.name
               } POR ${item.days} DIA`}</Text>
               <Text style={[styles.column, { flex: 1 }]}>{formatCurrency(item.unitPrice)}</Text>
               <Text style={[styles.column, { flex: 1 }]}>
@@ -169,9 +221,9 @@ export function QuotationPDF({ quotation }: QuotationPDFProps) {
             <Text style={styles.totalLabel}>IGV 18%</Text>
             <Text style={styles.totalValue}>{formatCurrency(quotation.igv)}</Text>
           </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total con IGV</Text>
-            <Text style={styles.totalValue}>{formatCurrency(quotation.total)}</Text>
+          <View style={[styles.totalRow, styles.grandTotal]}>
+            <Text style={[styles.totalLabel, styles.grandTotal]}>Total con IGV</Text>
+            <Text style={[styles.totalValue, styles.grandTotal]}>{formatCurrency(quotation.total)}</Text>
           </View>
         </View>
 

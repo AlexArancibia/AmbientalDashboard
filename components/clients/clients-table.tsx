@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MoreHorizontal, PencilIcon, TrashIcon, Search } from "lucide-react"
-import { type Client, PaymentMethod } from "@/types"
+import { type Client, PaymentMethod, CompanyType } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -31,7 +31,12 @@ import { toast } from "@/components/ui/use-toast"
 import type { z } from "zod"
 import type { formSchema } from "./client-form"
 
-export function ClientsTable() {
+interface ClientsTableProps {
+  companyType?: CompanyType
+  title?: string
+}
+
+export function ClientsTable({ companyType, title = "Clientes" }: ClientsTableProps) {
   const { clients, isLoading, error, fetchClients, createClient, updateClient, deleteClient } = useClientStore()
   const [searchTerm, setSearchTerm] = useState("")
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
@@ -45,14 +50,23 @@ export function ClientsTable() {
 
   // Filter clients whenever the search term or clients list changes
   useEffect(() => {
-    const filtered = clients.filter(
+    let filtered = clients
+
+    // Filter by company type if specified
+    if (companyType) {
+      filtered = filtered.filter((client) => client.type === companyType)
+    }
+
+    // Filter by search term
+    filtered = filtered.filter(
       (client) =>
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.ruc.includes(searchTerm) ||
         client.email.toLowerCase().includes(searchTerm.toLowerCase()),
     )
+
     setFilteredClients(filtered)
-  }, [clients, searchTerm])
+  }, [clients, searchTerm, companyType])
 
   // Show error toast if there's an error
   useEffect(() => {
@@ -84,12 +98,24 @@ export function ClientsTable() {
     }
   }
 
+  const getCompanyTypeLabel = (type: CompanyType) => {
+    switch (type) {
+      case CompanyType.CLIENT:
+        return "Cliente"
+      case CompanyType.PROVIDER:
+        return "Proveedor"
+      default:
+        return type
+    }
+  }
+
   const handleEditClient = (client: Client) => {
     setSelectedClient(client)
     setIsDialogOpen(true)
   }
 
   const handleCreateClient = () => {
+    // Solo establecemos el cliente como undefined, el tipo se manejará en el formulario
     setSelectedClient(undefined)
     setIsDialogOpen(true)
   }
@@ -98,41 +124,54 @@ export function ClientsTable() {
     setIsDialogOpen(false)
 
     try {
-      if (selectedClient) {
+      // Convertir startDate de string a Date si existe
+      const formattedData = {
+        ...data,
+        startDate: data.startDate ? new Date(data.startDate) : undefined,
+      }
+
+      if (selectedClient?.id) {
         // Update existing client
-        await updateClient(selectedClient.id, data)
+        await updateClient(selectedClient.id, formattedData)
         toast({
-          title: "Cliente actualizado",
-          description: "El cliente ha sido actualizado exitosamente.",
+          title: "Actualizado",
+          description: `${data.type === CompanyType.CLIENT ? "Cliente" : "Proveedor"} actualizado exitosamente.`,
         })
       } else {
         // Create new client
-        await createClient(data)
+        await createClient(formattedData)
         toast({
-          title: "Cliente creado",
-          description: "El cliente ha sido creado exitosamente.",
+          title: "Creado",
+          description: `${data.type === CompanyType.CLIENT ? "Cliente" : "Proveedor"} creado exitosamente.`,
         })
       }
     } catch (error) {
-      console.error("Error saving client:", error)
-      // Error is already handled by the store and will show a toast
+      console.error("Error saving:", error)
+      toast({
+        title: "Error",
+        description: "Hubo un problema al guardar.",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDeleteClient = async (client: Client) => {
-    if (confirm(`¿Estás seguro de que deseas eliminar al cliente ${client.name}?`)) {
+    const typeLabel = client.type === CompanyType.CLIENT ? "cliente" : "proveedor"
+    if (confirm(`¿Estás seguro de que deseas eliminar al ${typeLabel} ${client.name}?`)) {
       try {
         await deleteClient(client.id)
         toast({
-          title: "Cliente eliminado",
-          description: "El cliente ha sido eliminado exitosamente.",
+          title: "Eliminado",
+          description: `${client.type === CompanyType.CLIENT ? "Cliente" : "Proveedor"} eliminado exitosamente.`,
         })
       } catch (error) {
-        console.error("Error deleting client:", error)
+        console.error("Error deleting:", error)
         // Error is already handled by the store and will show a toast
       }
     }
   }
+
+  const entityType = companyType === CompanyType.PROVIDER ? "Proveedor" : "Cliente"
 
   return (
     <div className="space-y-4">
@@ -140,7 +179,7 @@ export function ClientsTable() {
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar clientes..."
+            placeholder={`Buscar ${title.toLowerCase()}...`}
             value={searchTerm}
             onChange={handleSearch}
             className="h-9 w-[250px] md:w-[300px] lg:w-[400px]"
@@ -148,25 +187,26 @@ export function ClientsTable() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            {filteredClients.length} clientes
+            {filteredClients.length} {title.toLowerCase()}
           </Badge>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleCreateClient}>Crear Cliente</Button>
+              <Button onClick={handleCreateClient}>Crear {entityType}</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>{selectedClient ? "Editar Cliente" : "Crear Cliente"}</DialogTitle>
+                <DialogTitle>{selectedClient?.id ? `Editar ${entityType}` : `Crear ${entityType}`}</DialogTitle>
                 <DialogDescription>
-                  {selectedClient
-                    ? "Modifica los detalles del cliente aquí. Haz clic en guardar cuando termines."
-                    : "Ingresa los detalles del nuevo cliente aquí."}
+                  {selectedClient?.id
+                    ? `Modifica los detalles del ${entityType.toLowerCase()} aquí. Haz clic en guardar cuando termines.`
+                    : `Ingresa los detalles del nuevo ${entityType.toLowerCase()} aquí.`}
                 </DialogDescription>
               </DialogHeader>
               <ClientForm
                 client={selectedClient}
                 onSubmit={handleSubmitClient}
                 onCancel={() => setIsDialogOpen(false)}
+                defaultType={companyType}
               />
             </DialogContent>
           </Dialog>
@@ -177,7 +217,7 @@ export function ClientsTable() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex justify-center items-center h-24">
-              <p>Cargando clientes...</p>
+              <p>Cargando {title.toLowerCase()}...</p>
             </div>
           ) : (
             <Table>
@@ -185,6 +225,7 @@ export function ClientsTable() {
                 <TableRow>
                   <TableHead>Razón Social</TableHead>
                   <TableHead>RUC</TableHead>
+                  {!companyType && <TableHead>Tipo</TableHead>}
                   <TableHead className="hidden md:table-cell">Email</TableHead>
                   <TableHead className="hidden md:table-cell">Persona de Contacto</TableHead>
                   <TableHead className="hidden lg:table-cell">Método de Pago</TableHead>
@@ -194,8 +235,8 @@ export function ClientsTable() {
               <TableBody>
                 {filteredClients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                      No se encontraron clientes.
+                    <TableCell colSpan={companyType ? 6 : 7} className="h-24 text-center">
+                      No se encontraron {title.toLowerCase()}.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -203,6 +244,13 @@ export function ClientsTable() {
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell>{client.ruc}</TableCell>
+                      {!companyType && (
+                        <TableCell>
+                          <Badge variant={client.type === CompanyType.CLIENT ? "default" : "secondary"}>
+                            {getCompanyTypeLabel(client.type)}
+                          </Badge>
+                        </TableCell>
+                      )}
                       <TableCell className="hidden md:table-cell">{client.email}</TableCell>
                       <TableCell className="hidden md:table-cell">{client.contactPerson || "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">

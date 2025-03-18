@@ -24,11 +24,13 @@ import {
   User,
   BarChart,
   ShoppingCart,
+  Truck,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "./theme-provider"
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -71,6 +73,14 @@ export function AppSidebar() {
                   <Link href="/clients">
                     <Users className="h-4 w-4" />
                     <span>Clientes</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/providers")}>
+                  <Link href="/providers">
+                    <Truck className="h-4 w-4" />
+                    <span>Proveedores</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -136,6 +146,13 @@ export function AppSidebar() {
                     <Settings className="h-4 w-4" />
                     <span>Configuración</span>
                   </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/settings")}>
+                
+                <ThemeToggle />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

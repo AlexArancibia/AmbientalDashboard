@@ -10,7 +10,7 @@ export async function GET() {
     let nextNumber = "OS-001"
     if (lastServiceOrder) {
       const lastNumber = Number.parseInt(lastServiceOrder.number.split("-")[1])
-      nextNumber = `OS-${(lastNumber + 1).toString().padStart(3, "0")}`
+      nextNumber = `OS-${new Date().getFullYear()}-${(lastNumber + 1).toString().padStart(3, "0")}`
     }
 
     return NextResponse.json({ nextNumber })

@@ -18,7 +18,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-// Modificar la función PUT para eliminar monitoringLocation
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const data = await request.json()
@@ -38,12 +37,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         name: data.name,
         ruc: data.ruc,
         address: data.address,
+        type: data.type,
         email: data.email,
         contactPerson: data.contactPerson,
         creditLine: data.creditLine,
         paymentMethod: data.paymentMethod,
         startDate: data.startDate ? new Date(data.startDate) : existingClient.startDate,
-        // Eliminamos monitoringLocation ya que ahora pertenece a quotation
         updatedAt: new Date(),
       },
     })

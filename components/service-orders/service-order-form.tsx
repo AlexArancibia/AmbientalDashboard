@@ -17,11 +17,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useServiceOrderStore } from "@/lib/stores/useServiceOrderStore"
 import { useClientStore } from "@/lib/stores/useClientStore"
 import { useUserStore } from "@/lib/stores/useUserStore"
-import { ServiceOrderStatus, Currency, type ServiceOrder, type ServiceOrderItem } from "@/types"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ServiceOrderStatus, Currency, type ServiceOrder, type ServiceOrderItem, CompanyType } from "@/types"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, Plus, Trash } from "lucide-react"
+import { Search, Plus, Trash, X, Loader2, Save } from "lucide-react"
 
 const formSchema = z.object({
   number: z.string().min(1, { message: "El número de orden de servicio es requerido" }),
@@ -115,7 +115,7 @@ export function ServiceOrderForm({ id, serviceOrder, onSubmit }: ServiceOrderFor
           const nextNumber = await getNextServiceOrderNumber()
           form.setValue("number", nextNumber)
           const defaultComment = `ORDEN DE SERVICIO N°${nextNumber} - MONITOREO AMBIENTALPE
-        
+      
 ENTREGA DE DOCUMENTOS:
 - Orden de Servicio (Copia de la orden firmada)
 - Informe técnico de los trabajos realizados
@@ -253,381 +253,431 @@ INFORMACIÓN ADICIONAL:
       service.description.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const formatCurrency = (amount: number) => {
+    const currency = form.getValues("currency")
+    const symbol = currency === Currency.PEN ? "S/. " : "$ "
+    return symbol + amount.toFixed(2)
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{id ? "Editar Orden de Servicio" : "Crear Nueva Orden de Servicio"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmitHandler)} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="number"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Número de Orden de Servicio</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="clientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cliente</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione un cliente" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="gestorId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Gestor</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione un gestor" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Moneda</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione una moneda" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={Currency.PEN}>PEN (S/.)</SelectItem>
-                        <SelectItem value={Currency.USD}>USD ($)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fecha</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Estado</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione un estado" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={ServiceOrderStatus.PENDING}>Pendiente</SelectItem>
-                        <SelectItem value={ServiceOrderStatus.IN_PROGRESS}>En Progreso</SelectItem>
-                        <SelectItem value={ServiceOrderStatus.COMPLETED}>Completada</SelectItem>
-                        <SelectItem value={ServiceOrderStatus.CANCELLED}>Cancelada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="paymentTerms"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Términos de Pago</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="attendantName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Atención</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+    <div className="w-full max-w-7xl mx-auto">
+      <Card className="border-border shadow-md">
+        <CardHeader className="bg-gradient-to-r from-background to-muted/50 border-b border-border">
+          <CardTitle className="text-xl font-semibold">
+            {id ? "Editar Orden de Servicio" : "Crear Nueva Orden de Servicio"}
+          </CardTitle>
+          <CardDescription>
+            {id
+              ? "Actualice los detalles de la orden de servicio"
+              : "Complete los detalles para crear una nueva orden de servicio"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmitHandler)} className="space-y-8">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 bg-muted/30 rounded-lg">
+                  <FormField
+                    control={form.control}
+                    name="number"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Número de Orden</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="border-input" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="clientId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Cliente</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}  >
+                          <FormControl>
+                            <SelectTrigger className="border-input">
+                              <SelectValue placeholder="Seleccione un cliente" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {clients
+                              .filter((client) => client.type === CompanyType.CLIENT)
+                              .map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Moneda</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="border-input">
+                              <SelectValue placeholder="Seleccione una moneda" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={Currency.PEN}>PEN (S/.)</SelectItem>
+                            <SelectItem value={Currency.USD}>USD ($)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Fecha</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} className="border-input" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="gestorId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Gestor</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="border-input">
+                              <SelectValue placeholder="Seleccione un gestor" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {users.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Estado</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="border-input">
+                              <SelectValue placeholder="Seleccione un estado" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={ServiceOrderStatus.PENDING}>Pendiente</SelectItem>
+                            <SelectItem value={ServiceOrderStatus.IN_PROGRESS}>En Progreso</SelectItem>
+                            <SelectItem value={ServiceOrderStatus.COMPLETED}>Completada</SelectItem>
+                            <SelectItem value={ServiceOrderStatus.CANCELLED}>Cancelada</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="paymentTerms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Términos de Pago</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="border-input" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="attendantName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-medium">Técnico Asignado</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="border-input" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descripción</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <div className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-medium">Descripción</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          value={field.value || ""}
+                          className="min-h-[120px] border-input"
+                          placeholder="Ingrese una descripción para esta orden de servicio..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Servicios</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {/* Search and add services */}
-                  <div className="space-y-4 border p-4 rounded-md">
-                    <h3 className="text-lg font-medium">Buscar y Agregar Servicios</h3>
-                    <div className="flex items-center space-x-2">
-                      <Search className="h-4 w-4" />
-                      <Input
-                        type="text"
-                        placeholder="Buscar servicio..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    <ScrollArea className="h-[200px] border rounded-md">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Código</TableHead>
-                            <TableHead>Descripción</TableHead>
-                            <TableHead>Precio Unitario</TableHead>
-                            <TableHead>Acción</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredServices.map((service) => (
-                            <TableRow key={service.id}>
-                              <TableCell>{service.code}</TableCell>
-                              <TableCell>{service.description}</TableCell>
-                              <TableCell>{service.unitPrice}</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  type="button"
-                                  onClick={() =>
-                                    setNewService({
-                                      code: service.code,
-                                      description: service.description,
-                                      name: service.description,
-                                      unitPrice: service.unitPrice,
-                                      quantity: 1,
-                                      days: 1,
-                                    })
-                                  }
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-
-                    <div className="space-y-4">
-                      <h4 className="font-medium">Agregar Servicio Manualmente</h4>
-                      <div className="grid grid-cols-6 gap-4">
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Servicios</CardTitle>
+                    <CardDescription>Busque y agregue servicios a la orden</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Search and add services */}
+                    <div className="space-y-4 border p-4 rounded-md">
+                      <div className="flex items-center space-x-2">
+                        <Search className="h-4 w-4" />
                         <Input
-                          placeholder="Código"
-                          value={newService.code || ""}
-                          onChange={(e) => setNewService({ ...newService, code: e.target.value })}
-                        />
-                        <Input
-                          placeholder="Descripción"
-                          value={newService.description || ""}
-                          onChange={(e) => setNewService({ ...newService, description: e.target.value })}
-                        />
-                        <Input
-                          placeholder="Nombre"
-                          value={newService.name || ""}
-                          onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Cantidad"
-                          value={newService.quantity || ""}
-                          onChange={(e) => setNewService({ ...newService, quantity: Number(e.target.value) })}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Precio Unitario"
-                          value={newService.unitPrice || ""}
-                          onChange={(e) => setNewService({ ...newService, unitPrice: Number(e.target.value) })}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Días"
-                          value={newService.days || ""}
-                          onChange={(e) => setNewService({ ...newService, days: Number(e.target.value) })}
+                          type="text"
+                          placeholder="Buscar servicio..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
                         />
                       </div>
-                      <Button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          handleAddService()
-                        }}
-                        className="w-full"
-                      >
-                        Agregar Servicio
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Selected services */}
-                  <div className="border p-4 rounded-md">
-                    <h3 className="text-lg font-medium mb-4">Servicios Seleccionados ({items.length})</h3>
-                    {items.length > 0 ? (
-                      <>
-                        <div className="rounded-md border">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Código</TableHead>
-                                <TableHead>Descripción</TableHead>
-                                <TableHead>Nombre</TableHead>
-                                <TableHead>Cantidad</TableHead>
-                                <TableHead>Precio Unitario</TableHead>
-                                <TableHead>Días</TableHead>
-                                <TableHead>Total</TableHead>
-                                <TableHead>Acción</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {items.map((item, index) => (
-                                <TableRow key={item.id || index}>
-                                  <TableCell>{item.code}</TableCell>
-                                  <TableCell>{item.description}</TableCell>
-                                  <TableCell>{item.name}</TableCell>
-                                  <TableCell>{item.quantity}</TableCell>
-                                  <TableCell>{item.unitPrice}</TableCell>
-                                  <TableCell>{item.days}</TableCell>
-                                  <TableCell>
-                                    {(item.quantity * item.unitPrice * (item.days || 1)).toFixed(2)}
-                                  </TableCell>
+                      <ScrollArea className="h-[200px] border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Código</TableHead>
+                              <TableHead>Descripción</TableHead>
+                              <TableHead>Precio Unitario</TableHead>
+                              <TableHead>Acción</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredServices.length > 0 ? (
+                              filteredServices.map((service) => (
+                                <TableRow key={service.id} className="hover:bg-muted/50 transition-colors">
+                                  <TableCell>{service.code}</TableCell>
+                                  <TableCell>{service.description}</TableCell>
+                                  <TableCell>{formatCurrency(service.unitPrice)}</TableCell>
                                   <TableCell>
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault()
-                                        handleRemoveService(index)
-                                      }}
+                                      onClick={() =>
+                                        setNewService({
+                                          code: service.code,
+                                          description: service.description,
+                                          name: service.description,
+                                          unitPrice: service.unitPrice,
+                                          quantity: 1,
+                                          days: 1,
+                                        })
+                                      }
                                     >
-                                      <Trash className="h-4 w-4" />
+                                      <Plus className="h-4 w-4" />
                                     </Button>
                                   </TableCell>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                                  No se encontraron servicios
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+
+                      <div className="space-y-4">
+                        <h4 className="font-medium">Agregar Servicio Manualmente</h4>
+                        <div className="grid grid-cols-6 gap-4">
+                          <Input
+                            placeholder="Código"
+                            value={newService.code || ""}
+                            onChange={(e) => setNewService({ ...newService, code: e.target.value })}
+                          />
+                          <Input
+                            placeholder="Descripción"
+                            value={newService.description || ""}
+                            onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+                          />
+                          <Input
+                            placeholder="Nombre"
+                            value={newService.name || ""}
+                            onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Cantidad"
+                            value={newService.quantity || ""}
+                            onChange={(e) => setNewService({ ...newService, quantity: Number(e.target.value) })}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Precio Unitario"
+                            value={newService.unitPrice || ""}
+                            onChange={(e) => setNewService({ ...newService, unitPrice: Number(e.target.value) })}
+                          />
+                          <Input
+                            type="number"
+                            placeholder="Días"
+                            value={newService.days || ""}
+                            onChange={(e) => setNewService({ ...newService, days: Number(e.target.value) })}
+                          />
                         </div>
-                        <div className="mt-4 flex justify-end space-x-4">
-                          <div className="text-sm">
-                            Subtotal: <span className="font-medium">{totals.subtotal.toFixed(2)}</span>
-                          </div>
-                          <div className="text-sm">
-                            IGV (18%): <span className="font-medium">{totals.igv.toFixed(2)}</span>
-                          </div>
-                          <div className="text-sm font-bold">
-                            Total: <span>{totals.total.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No hay servicios seleccionados. Agregue servicios desde la sección superior.
+                        <Button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleAddService()
+                          }}
+                          className="w-full"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Agregar Servicio
+                        </Button>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
 
-            <FormField
-              control={form.control}
-              name="comments"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Comentarios</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    {/* Selected services */}
+                    <div className="border p-4 rounded-md">
+                      <h3 className="text-lg font-medium mb-4">Servicios Seleccionados ({items.length})</h3>
+                      {items.length > 0 ? (
+                        <>
+                          <div className="rounded-md border">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                  <TableHead>Código</TableHead>
+                                  <TableHead>Descripción</TableHead>
+                                  <TableHead>Nombre</TableHead>
+                                  <TableHead>Cantidad</TableHead>
+                                  <TableHead>Precio Unitario</TableHead>
+                                  <TableHead>Días</TableHead>
+                                  <TableHead>Total</TableHead>
+                                  <TableHead>Acción</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {items.map((item, index) => (
+                                  <TableRow key={item.id || index} className="border-b border-border/40">
+                                    <TableCell>{item.code}</TableCell>
+                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell>{item.quantity}</TableCell>
+                                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                                    <TableCell>{item.days || 1}</TableCell>
+                                    <TableCell>
+                                      {formatCurrency(item.quantity * item.unitPrice * (item.days || 1))}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          handleRemoveService(index)
+                                        }}
+                                        className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                                      >
+                                        <Trash className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          <div className="mt-4 flex justify-end space-x-4">
+                            <div className="text-sm">
+                              Subtotal: <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
+                            </div>
+                            <div className="text-sm">
+                              IGV (18%): <span className="font-medium">{formatCurrency(totals.igv)}</span>
+                            </div>
+                            <div className="text-sm font-bold">
+                              Total: <span>{formatCurrency(totals.total)}</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No hay servicios seleccionados. Agregue servicios desde la sección superior.
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => router.push("/service-orders")} type="button">
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Guardando..." : id ? "Actualizar Orden de Servicio" : "Crear Orden de Servicio"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+              <FormField
+                control={form.control}
+                name="comments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-medium">Comentarios</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} className="min-h-[150px]" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-3 pt-6">
+                <Button variant="outline" onClick={() => router.push("/service-orders")} type="button" className="px-5">
+                  <X className="mr-2 h-4 w-4" /> Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-5"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {id ? "Actualizando..." : "Creando..."}
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      {id ? "Actualizar Orden" : "Crear Orden"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

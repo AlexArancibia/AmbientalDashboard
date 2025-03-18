@@ -9,13 +9,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { PaymentMethod, type Client } from "@/types"
+import { PaymentMethod, CompanyType, type Client } from "@/types"
 import { format } from "date-fns"
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "La razón social es requerida" }),
   ruc: z.string().min(11, { message: "El RUC debe tener 11 dígitos" }).max(11),
   address: z.string().min(1, { message: "La dirección es requerida" }),
+  type: z.nativeEnum(CompanyType, { message: "El tipo de empresa es requerido" }),
   email: z.string().email({ message: "Correo electrónico inválido" }),
   contactPerson: z.string().optional(),
   paymentMethod: z.nativeEnum(PaymentMethod).optional(),
@@ -35,6 +36,7 @@ export function ClientDetails({ client, onUpdate }: ClientDetailsProps) {
       name: client.name,
       ruc: client.ruc,
       address: client.address,
+      type: client.type,
       email: client.email,
       contactPerson: client.contactPerson || "",
       paymentMethod: client.paymentMethod,
@@ -95,6 +97,27 @@ export function ClientDetails({ client, onUpdate }: ClientDetailsProps) {
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione un tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={CompanyType.CLIENT}>Cliente</SelectItem>
+                        <SelectItem value={CompanyType.PROVIDER}>Proveedor</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -169,6 +192,10 @@ export function ClientDetails({ client, onUpdate }: ClientDetailsProps) {
               <div>
                 <h3 className="font-semibold">Dirección</h3>
                 <p>{client.address}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold">Tipo</h3>
+                <p>{client.type === CompanyType.CLIENT ? "Cliente" : "Proveedor"}</p>
               </div>
               <div>
                 <h3 className="font-semibold">Correo Electrónico</h3>

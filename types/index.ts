@@ -15,6 +15,9 @@ export enum EquipmentStatus {
   MALO = "MALO",
 }
 
+
+
+
 export enum QuotationStatus {
   DRAFT = "DRAFT",
   SENT = "SENT",
@@ -31,11 +34,16 @@ export enum ServiceOrderStatus {
 }
 
 export enum PurchaseOrderStatus {
-  DRAFT = "DRAFT",
-  SENT = "SENT",
-  CONFIRMED = "CONFIRMED",
+  PENDING = "PENDING",
+  IN_PROGRESS = "IN_PROGRESS",
+  COMPLETED = "COMPLETED",
   CANCELLED = "CANCELLED",
-  RECEIVED = "RECEIVED",
+}
+
+export enum CompanyType {
+  CLIENT = "CLIENT",
+  PROVIDER = "PROVIDER",
+ 
 }
 
 export interface Client {
@@ -45,6 +53,7 @@ export interface Client {
   address: string
   email: string
   contactPerson?: string
+  type: CompanyType
   creditLine?: number
   paymentMethod?: PaymentMethod
   startDate?: Date
@@ -171,7 +180,7 @@ export interface PurchaseOrderItem {
   quantity: number
   unitPrice: number
   name: string
-  total?: number // Calculated field for UI
+  total: number // Calculated field for UI
   createdAt?: Date
   updatedAt?: Date
   deletedAt?: Date

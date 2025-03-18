@@ -9,12 +9,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/components/ui/use-toast"
-import { type Client, PaymentMethod } from "@/types"
+import { type Client, PaymentMethod, CompanyType } from "@/types"
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "La razón social debe tener al menos 2 caracteres." }),
   ruc: z.string().min(11, { message: "El RUC debe tener 11 caracteres." }).max(11),
   address: z.string().min(5, { message: "La dirección debe tener al menos 5 caracteres." }),
+  type: z.nativeEnum(CompanyType, { message: "El tipo de empresa es requerido" }),
   email: z.string().email({ message: "Correo electrónico inválido." }),
   contactPerson: z.string().optional(),
   paymentMethod: z.nativeEnum(PaymentMethod).optional(),
@@ -22,9 +23,11 @@ const formSchema = z.object({
 
 interface NewClientFormProps {
   onClientCreated: (client: Client) => void
+  defaultType?: CompanyType
+  onClose?: () => void
 }
 
-export function NewClientForm({ onClientCreated }: NewClientFormProps) {
+export function NewClientForm({ onClientCreated, defaultType = CompanyType.CLIENT, onClose }: NewClientFormProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -33,6 +36,7 @@ export function NewClientForm({ onClientCreated }: NewClientFormProps) {
       name: "",
       ruc: "",
       address: "",
+      type: defaultType, // Use the provided defaultType
       email: "",
       contactPerson: "",
       paymentMethod: undefined,
@@ -59,6 +63,11 @@ export function NewClientForm({ onClientCreated }: NewClientFormProps) {
         description: "El nuevo cliente ha sido creado.",
       })
       form.reset()
+
+      // Close the dialog if onClose is provided
+      if (onClose) {
+        onClose()
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -112,6 +121,31 @@ export function NewClientForm({ onClientCreated }: NewClientFormProps) {
             </FormItem>
           )}
         />
+        {defaultType ? (
+          <input type="hidden" {...form.register("type")} value={defaultType} />
+        ) : (
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione un tipo" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={CompanyType.CLIENT}>Cliente</SelectItem>
+                    <SelectItem value={CompanyType.PROVIDER}>Proveedor</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <FormField
           control={form.control}
           name="email"

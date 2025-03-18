@@ -26,12 +26,16 @@ model User {
   serviceOrders  ServiceOrder[] @relation("Gestor")
   purchaseOrders PurchaseOrder[] @relation("PurchaseOrderGestor") // Nueva relación
 }
-
+enum CompanyType {
+  CLIENT
+  PROVIDER
+}
 model Client {
   id                 String    @id @default(cuid())
   name               String
   ruc                String    @unique
   address            String
+  type               CompanyType
   email              String
   contactPerson      String?
   creditLine         Float?

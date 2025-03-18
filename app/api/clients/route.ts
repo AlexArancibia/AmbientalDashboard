@@ -14,7 +14,6 @@ export async function GET() {
   }
 }
 
-// Modificar la función POST para eliminar monitoringLocation
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
@@ -23,12 +22,12 @@ export async function POST(request: NextRequest) {
         name: data.name,
         ruc: data.ruc,
         address: data.address,
+        type: data.type,
         email: data.email,
         contactPerson: data.contactPerson,
         creditLine: data.creditLine,
         paymentMethod: data.paymentMethod,
         startDate: data.startDate ? new Date(data.startDate) : null,
-        // Eliminamos monitoringLocation ya que ahora pertenece a quotation
       },
     })
     return NextResponse.json(client, { status: 201 })
